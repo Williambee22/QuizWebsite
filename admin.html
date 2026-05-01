@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz Admin</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="shell adminShell">
+    <section class="card" id="loginCard">
+      <h1>Admin Login</h1>
+      <p class="muted">Default password is <code>admin123</code>. Change it with ADMIN_PASSWORD.</p>
+
+      <form id="loginForm" class="stack">
+        <input id="password" type="password" placeholder="Admin password" />
+        <button type="submit">Login</button>
+      </form>
+
+      <p id="loginError" class="error"></p>
+    </section>
+
+    <section class="card hidden" id="adminCard">
+      <div class="topbar">
+        <div>
+          <p class="eyebrow">Admin Panel</p>
+          <h1>Real-Time Quiz Control</h1>
+        </div>
+        <a class="ghostLink" href="/" target="_blank">Open Player Page</a>
+      </div>
+
+      <form id="questionForm" class="stack">
+        <label>
+          Question
+          <textarea id="question" rows="3" placeholder="Type the question"></textarea>
+        </label>
+
+        <div class="twoCols">
+          <label>
+            Timer seconds
+            <input id="duration" type="number" min="5" max="120" value="15" />
+          </label>
+
+          <label>
+            Correct answer
+            <select id="correctKey">
+              <option>A</option>
+              <option>B</option>
+              <option>C</option>
+              <option>D</option>
+              <option>E</option>
+              <option>F</option>
+            </select>
+          </label>
+        </div>
+
+        <div>
+          <div class="optionHeader">
+            <label>Answer choices</label>
+            <button type="button" class="secondary" id="addOptionBtn">Add choice</button>
+          </div>
+          <div id="optionInputs" class="stack optionInputs"></div>
+        </div>
+
+        <div class="actions">
+          <button type="submit">Start Question</button>
+          <button type="button" class="secondary" id="revealBtn">Reveal Answer</button>
+          <button type="button" class="secondary" id="resetBtn">Reset Lobby</button>
+          <button type="button" class="danger" id="clearScoresBtn">Clear Scores</button>
+        </div>
+
+        <p id="adminError" class="error"></p>
+      </form>
+
+      <div class="dashboard">
+        <section>
+          <h2>Live Status</h2>
+          <p><strong>Phase:</strong> <span id="phaseLabel">lobby</span></p>
+          <p><strong>Time left:</strong> <span id="timeLeftLabel">0.0</span>s</p>
+          <p><strong>Answered:</strong> <span id="answeredLabel">0 / 0</span></p>
+        </section>
+
+        <section>
+          <h2>Players</h2>
+          <div id="playersList" class="playersList"></div>
+        </section>
+
+        <section>
+          <h2>Answer Counts</h2>
+          <div id="countsList" class="results"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/admin.js"></script>
+</body>
+</html>
