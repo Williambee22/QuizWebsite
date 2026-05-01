@@ -30,7 +30,6 @@ const finalResultsList = document.getElementById("finalResultsList");
 const countdownNumber = document.getElementById("countdownNumber");
 const countdownQuestionText = document.getElementById("countdownQuestionText");
 
-
 const musicVolume = document.getElementById("musicVolume");
 
 const lobbyMusic = new Audio("/lobby-music.mp3");
@@ -40,6 +39,7 @@ lobbyMusic.volume = Number(localStorage.getItem("quizMusicVolume") ?? 35) / 100;
 let joinedName = localStorage.getItem("quizPlayerName") || "";
 let myAnswer = null;
 let lastRenderedQuestionKey = "";
+let lastCountdownDisplayNumber = null;
 
 if (joinedName) {
   playerName.value = joinedName;
@@ -219,7 +219,6 @@ function updateOptionButtonState(state) {
   }
 }
 
-
 function renderLeaderboard(leaderboard) {
   leaderboardList.innerHTML = "";
 
@@ -296,7 +295,6 @@ function renderFinalResults(finalResults) {
   }
 }
 
-
 socket.on("state", (state) => {
   const me = state.players.find((p) => p.name === joinedName);
 
@@ -307,6 +305,7 @@ socket.on("state", (state) => {
   if (state.phase === "lobby") {
     myAnswer = null;
     lastRenderedQuestionKey = "";
+    lastCountdownDisplayNumber = null;
     showOnly(lobbyView);
     playLobbyMusic();
     return;
@@ -317,25 +316,28 @@ socket.on("state", (state) => {
     myAnswer = null;
     lastRenderedQuestionKey = "";
     showOnly(countdownView);
-  
+
     renderCountdownQuestion(state);
-  
+
     const secondsLeft = Math.max(0, state.countdownLeftMs / 1000);
     const displayNumber = Math.max(1, Math.ceil(secondsLeft));
-  
-    if (countdownNumber) {
+
+    if (countdownNumber && lastCountdownDisplayNumber !== displayNumber) {
       countdownNumber.textContent = String(displayNumber);
-  
+
       countdownNumber.classList.remove("countdownPulse");
       void countdownNumber.offsetWidth;
       countdownNumber.classList.add("countdownPulse");
+
+      lastCountdownDisplayNumber = displayNumber;
     }
-  
+
     return;
   }
 
   if (state.phase === "question") {
     stopLobbyMusic();
+    lastCountdownDisplayNumber = null;
 
     if (!state.players.some((p) => p.name === joinedName && p.hasAnswered)) {
       myAnswer = null;
@@ -370,12 +372,14 @@ socket.on("state", (state) => {
 
   if (state.phase === "locked") {
     stopLobbyMusic();
+    lastCountdownDisplayNumber = null;
     showOnly(lockedView);
     return;
   }
 
   if (state.phase === "reveal") {
     stopLobbyMusic();
+    lastCountdownDisplayNumber = null;
     showOnly(revealView);
     renderResults(state.lastResults);
     return;
@@ -383,6 +387,7 @@ socket.on("state", (state) => {
 
   if (state.phase === "leaderboard") {
     stopLobbyMusic();
+    lastCountdownDisplayNumber = null;
     showOnly(leaderboardView);
     renderLeaderboard(state.leaderboard);
     return;
@@ -390,11 +395,11 @@ socket.on("state", (state) => {
 
   if (state.phase === "finalResults") {
     stopLobbyMusic();
+    lastCountdownDisplayNumber = null;
     showOnly(finalResultsView);
     renderFinalResults(state.finalResults);
     return;
   }
-  
 });
 
 function escapeHtml(value) {
