@@ -147,8 +147,50 @@ socket.on("state", (state) => {
   if (state.phase === "reveal") {
     showOnly(revealView);
     renderResults(state.lastResults);
+    return;
+  }
+  
+  if (state.phase === "leaderboard") {
+    showOnly(leaderboardView);
+    renderLeaderboard(state.leaderboard);
+    return;
   }
 });
+
+function renderLeaderboard(leaderboard) {
+  leaderboardList.innerHTML = "";
+
+  const entries = leaderboard?.topFive || [];
+
+  if (entries.length === 0) {
+    leaderboardList.innerHTML = `<p class="muted">No players yet.</p>`;
+    return;
+  }
+
+  for (const entry of entries) {
+    const row = document.createElement("div");
+    row.className = `leaderboardRow move-${entry.movement}`;
+
+    let movementText = "—";
+    if (entry.movement === "up") {
+      movementText = `▲ ${entry.movementAmount}`;
+    } else if (entry.movement === "down") {
+      movementText = `▼ ${entry.movementAmount}`;
+    } else if (entry.movement === "new") {
+      movementText = "NEW";
+    }
+
+    row.innerHTML = `
+      <div class="leaderboardRank">#${entry.rank}</div>
+      <div class="leaderboardName">${escapeHtml(entry.name)}</div>
+      <div class="leaderboardScore">${entry.score} pts</div>
+      <div class="leaderboardMove">${movementText}</div>
+    `;
+
+    leaderboardList.appendChild(row);
+  }
+}
+
 
 function escapeHtml(value) {
   return String(value)
