@@ -23,6 +23,7 @@ const timeLeftLabel = document.getElementById("timeLeftLabel");
 const answeredLabel = document.getElementById("answeredLabel");
 const playersList = document.getElementById("playersList");
 const countsList = document.getElementById("countsList");
+const leaderboardBtn = document.getElementById("leaderboardBtn");
 
 const keys = ["A", "B", "C", "D", "E", "F"];
 
@@ -75,6 +76,12 @@ questionForm.addEventListener("submit", (event) => {
       }
     }
   );
+});
+
+leaderboardBtn.addEventListener("click", () => {
+  socket.emit("showLeaderboard", (res) => {
+    if (!res.ok) adminError.textContent = res.error;
+  });
 });
 
 revealBtn.addEventListener("click", () => {
