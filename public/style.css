@@ -274,6 +274,109 @@ button:disabled {
   background: rgba(255,77,109,0.14);
 }
 
+.finalResultsList {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.finalResultRow {
+  display: grid;
+  grid-template-columns: 90px 1fr 140px 100px;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 20px;
+  background: rgba(255,255,255,0.08);
+  animation: finalRevealPop 0.7s ease both;
+}
+
+.finalPlacement {
+  font-size: 1.7rem;
+  font-weight: 1000;
+  color: var(--accent2);
+}
+
+.finalName {
+  font-size: 1.35rem;
+  font-weight: 1000;
+}
+
+.finalScore {
+  color: var(--muted);
+  font-weight: 900;
+  text-align: right;
+}
+
+.finalMedal {
+  font-weight: 1000;
+  text-align: center;
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+
+.final-gold {
+  border-color: rgba(255, 215, 0, 0.8);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.28), rgba(255,255,255,0.08));
+  box-shadow: 0 0 40px rgba(255, 215, 0, 0.18);
+}
+
+.final-silver {
+  border-color: rgba(192, 192, 192, 0.9);
+  background: linear-gradient(135deg, rgba(192, 192, 192, 0.26), rgba(255,255,255,0.08));
+  box-shadow: 0 0 36px rgba(192, 192, 192, 0.16);
+}
+
+.final-bronze {
+  border-color: rgba(205, 127, 50, 0.9);
+  background: linear-gradient(135deg, rgba(205, 127, 50, 0.28), rgba(255,255,255,0.08));
+  box-shadow: 0 0 36px rgba(205, 127, 50, 0.16);
+}
+
+.final-gold .finalMedal {
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.18);
+}
+
+.final-silver .finalMedal {
+  color: #e8e8e8;
+  background: rgba(192, 192, 192, 0.18);
+}
+
+.final-bronze .finalMedal {
+  color: #d98b42;
+  background: rgba(205, 127, 50, 0.18);
+}
+
+@keyframes finalRevealPop {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.92);
+  }
+
+  65% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.03);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 760px) {
+  .finalResultRow {
+    grid-template-columns: 70px 1fr;
+  }
+
+  .finalScore,
+  .finalMedal {
+    text-align: left;
+  }
+}
+
+
 .move-new {
   animation: newLeaderboardEntry 0.8s ease both;
   border-color: rgba(0,212,255,0.7);
