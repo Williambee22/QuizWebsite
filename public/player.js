@@ -10,6 +10,7 @@ const nameLabel = document.getElementById("nameLabel");
 const scoreLabel = document.getElementById("scoreLabel");
 
 const lobbyView = document.getElementById("lobbyView");
+const countdownView = document.getElementById("countdownView");
 const questionView = document.getElementById("questionView");
 const lockedView = document.getElementById("lockedView");
 const revealView = document.getElementById("revealView");
@@ -23,6 +24,10 @@ const answerStatus = document.getElementById("answerStatus");
 const correctText = document.getElementById("correctText");
 const resultsList = document.getElementById("resultsList");
 const leaderboardList = document.getElementById("leaderboardList");
+
+const countdownNumber = document.getElementById("countdownNumber");
+const countdownQuestionText = document.getElementById("countdownQuestionText");
+const countdownOptionsGrid = document.getElementById("countdownOptionsGrid");
 
 const musicVolume = document.getElementById("musicVolume");
 
@@ -82,23 +87,30 @@ joinForm.addEventListener("submit", (event) => {
 });
 
 function showOnly(view) {
-  for (const element of [
+  const views = [
     lobbyView,
+    countdownView,
     questionView,
     lockedView,
     revealView,
     leaderboardView,
-  ]) {
-    element.classList.add("hidden");
+  ];
+
+  for (const element of views) {
+    if (element) {
+      element.classList.add("hidden");
+    }
   }
 
-  view.classList.remove("hidden");
+  if (view) {
+    view.classList.remove("hidden");
+  }
 }
 
 function renderOptions(state) {
   optionsGrid.innerHTML = "";
 
-  for (const option of state.options) {
+  for (const option of state.options || []) {
     const button = document.createElement("button");
     button.className = "optionButton";
     button.disabled = Boolean(myAnswer) || state.phase !== "question";
@@ -121,6 +133,24 @@ function renderOptions(state) {
     });
 
     optionsGrid.appendChild(button);
+  }
+}
+
+function renderCountdownOptions(state) {
+  if (countdownQuestionText) {
+    countdownQuestionText.textContent = state.question || "";
+  }
+
+  if (!countdownOptionsGrid) return;
+
+  countdownOptionsGrid.innerHTML = "";
+
+  for (const option of state.options || []) {
+    const button = document.createElement("button");
+    button.className = "optionButton countdownOptionButton";
+    button.disabled = true;
+    button.innerHTML = `<strong>${option.key}</strong><span>${escapeHtml(option.text)}</span>`;
+    countdownOptionsGrid.appendChild(button);
   }
 }
 
@@ -155,7 +185,7 @@ function renderResults(results) {
 
   resultsList.innerHTML = "";
 
-  for (const [key, count] of Object.entries(results.counts)) {
+  for (const [key, count] of Object.entries(results.counts || {})) {
     const row = document.createElement("div");
     row.className = key === results.correctKey ? "resultRow correctRow" : "resultRow";
     row.innerHTML = `<strong>${key}</strong><span>${count} answer${count === 1 ? "" : "s"}</span>`;
@@ -209,6 +239,27 @@ socket.on("state", (state) => {
     myAnswer = null;
     showOnly(lobbyView);
     playLobbyMusic();
+    return;
+  }
+
+  if (state.phase === "countdown") {
+    stopLobbyMusic();
+    myAnswer = null;
+    showOnly(countdownView);
+
+    renderCountdownOptions(state);
+
+    const secondsLeft = Math.max(0, state.countdownLeftMs / 1000);
+    const displayNumber = Math.max(1, Math.ceil(secondsLeft));
+
+    if (countdownNumber) {
+      countdownNumber.textContent = String(displayNumber);
+
+      countdownNumber.classList.remove("countdownPulse");
+      void countdownNumber.offsetWidth;
+      countdownNumber.classList.add("countdownPulse");
+    }
+
     return;
   }
 
