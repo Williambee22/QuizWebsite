@@ -16,12 +16,17 @@ app.use(express.static("public"));
  * Everyone sees the same quiz state because every change is emitted from here.
  */
 const state = {
-  phase: "lobby", // lobby | question | reveal | leaderboard
+  phase: "lobby", // lobby | countdown | question | reveal | leaderboard
   question: "",
   options: [],
   correctKey: "",
   durationSeconds: 15,
   endsAt: null,
+
+  countdownEndsAt: null,
+  countdownSeconds: 3,
+  pendingQuestion: null,
+
   players: {},
   lastResults: null,
   leaderboard: null,
@@ -34,9 +39,15 @@ let timerInterval = null;
 
 function publicState() {
   const now = Date.now();
+
   const timeLeftMs =
     state.phase === "question" && state.endsAt
       ? Math.max(0, state.endsAt - now)
+      : 0;
+
+  const countdownLeftMs =
+    state.phase === "countdown" && state.countdownEndsAt
+      ? Math.max(0, state.countdownEndsAt - now)
       : 0;
 
   return {
@@ -45,6 +56,8 @@ function publicState() {
     options: state.options,
     durationSeconds: state.durationSeconds,
     timeLeftMs,
+    countdownLeftMs,
+    countdownSeconds: state.countdownSeconds,
     players: Object.values(state.players).map((p) => ({
       id: p.id,
       name: p.name,
@@ -209,6 +222,8 @@ function revealQuestion() {
 
   state.phase = "reveal";
   state.endsAt = null;
+  state.countdownEndsAt = null;
+  state.pendingQuestion = null;
   state.lastResults = buildResults();
 
   emitState();
@@ -230,6 +245,53 @@ function startTimer() {
 
     emitState();
   }, 250);
+}
+
+function beginQuestionNow() {
+  if (!state.pendingQuestion) return;
+
+  const pending = state.pendingQuestion;
+
+  state.phase = "question";
+  state.question = pending.question;
+  state.options = pending.options;
+  state.correctKey = pending.correctKey;
+  state.durationSeconds = pending.durationSeconds;
+  state.questionStartedAt = Date.now();
+  state.endsAt = state.questionStartedAt + pending.durationSeconds * 1000;
+  state.countdownEndsAt = null;
+  state.pendingQuestion = null;
+  state.lastResults = null;
+  state.leaderboard = null;
+  state.questionScored = false;
+
+  emitState();
+  startTimer();
+}
+
+function startCountdown() {
+  clearTimer();
+
+  state.phase = "countdown";
+  state.countdownSeconds = 3;
+  state.countdownEndsAt = Date.now() + state.countdownSeconds * 1000;
+
+  timerInterval = setInterval(() => {
+    if (state.phase !== "countdown" || !state.countdownEndsAt) {
+      clearTimer();
+      return;
+    }
+
+    if (Date.now() >= state.countdownEndsAt) {
+      clearTimer();
+      beginQuestionNow();
+      return;
+    }
+
+    emitState();
+  }, 100);
+
+  emitState();
 }
 
 function buildLeaderboard() {
@@ -355,13 +417,20 @@ io.on("connection", (socket) => {
       return;
     }
 
-    state.phase = "question";
-    state.question = question;
-    state.options = options;
-    state.correctKey = correctKey;
+    state.pendingQuestion = {
+      question,
+      options,
+      correctKey,
+      durationSeconds,
+    };
+
+    state.question = "";
+    state.options = [];
+    state.correctKey = "";
     state.durationSeconds = durationSeconds;
-    state.questionStartedAt = Date.now();
-    state.endsAt = state.questionStartedAt + durationSeconds * 1000;
+    state.endsAt = null;
+    state.countdownEndsAt = null;
+    state.questionStartedAt = null;
     state.lastResults = null;
     state.leaderboard = null;
     state.questionScored = false;
@@ -377,8 +446,7 @@ io.on("connection", (socket) => {
     }
 
     callback?.({ ok: true });
-    emitState();
-    startTimer();
+    startCountdown();
   });
 
   socket.on("submitAnswer", (answerKey, callback) => {
@@ -449,6 +517,8 @@ io.on("connection", (socket) => {
 
     state.phase = "leaderboard";
     state.endsAt = null;
+    state.countdownEndsAt = null;
+    state.pendingQuestion = null;
     state.leaderboard = buildLeaderboard();
 
     callback?.({ ok: true });
@@ -460,20 +530,22 @@ io.on("connection", (socket) => {
       callback?.({ ok: false, error: "Admin only." });
       return;
     }
-  
+
     clearTimer();
-  
+
     state.phase = "lobby";
     state.question = "";
     state.options = [];
     state.correctKey = "";
     state.endsAt = null;
+    state.countdownEndsAt = null;
+    state.pendingQuestion = null;
     state.questionStartedAt = null;
     state.lastResults = null;
     state.leaderboard = null;
     state.previousLeaderboardRanks = {};
     state.questionScored = false;
-  
+
     for (const player of Object.values(state.players)) {
       player.answerKey = null;
       player.answeredAt = null;
@@ -485,7 +557,7 @@ io.on("connection", (socket) => {
       player.lastStreakBonus = 0;
       player.lastCorrect = false;
     }
-  
+
     callback?.({ ok: true });
     emitState();
   });
