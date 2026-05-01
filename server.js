@@ -83,8 +83,13 @@ function publicState() {
 
   return {
     phase: state.phase,
-    question: state.question,
-    options: state.options,
+    question: state.phase === "countdown" && state.pendingQuestion
+      ? state.pendingQuestion.question
+      : state.question,
+    
+    options: state.phase === "countdown" && state.pendingQuestion
+      ? state.pendingQuestion.options
+      : state.options,
     durationSeconds: state.durationSeconds,
     timeLeftMs,
     countdownLeftMs,
