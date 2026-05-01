@@ -460,9 +460,9 @@ io.on("connection", (socket) => {
       callback?.({ ok: false, error: "Admin only." });
       return;
     }
-
+  
     clearTimer();
-
+  
     state.phase = "lobby";
     state.question = "";
     state.options = [];
@@ -471,18 +471,21 @@ io.on("connection", (socket) => {
     state.questionStartedAt = null;
     state.lastResults = null;
     state.leaderboard = null;
+    state.previousLeaderboardRanks = {};
     state.questionScored = false;
-
+  
     for (const player of Object.values(state.players)) {
       player.answerKey = null;
       player.answeredAt = null;
+      player.score = 0;
+      player.correctStreak = 0;
       player.lastPointsEarned = 0;
       player.lastBasePoints = 0;
       player.lastSpeedBonus = 0;
       player.lastStreakBonus = 0;
       player.lastCorrect = false;
     }
-
+  
     callback?.({ ok: true });
     emitState();
   });
