@@ -50,7 +50,7 @@ joinForm.addEventListener("submit", (event) => {
 });
 
 function showOnly(view) {
-  for (const element of [lobbyView, questionView, lockedView, revealView]) {
+  for (const element of [lobbyView, questionView, lockedView, revealView, leaderboardView]) {
     element.classList.add("hidden");
   }
   view.classList.remove("hidden");
