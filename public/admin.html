@@ -56,12 +56,17 @@
           <textarea id="question" rows="3" placeholder="Type the question"></textarea>
         </label>
 
-        <div class="twoCols">
+        <div class="threeCols">
           <label>
             Timer seconds
             <input id="duration" type="number" min="5" max="120" value="15" />
           </label>
-
+        
+          <label>
+            Countdown seconds
+            <input id="countdownDuration" type="number" min="0" max="30" value="3" />
+          </label>
+        
           <label>
             Correct answer
             <select id="correctKey">
