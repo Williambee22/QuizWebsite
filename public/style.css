@@ -170,6 +170,19 @@ button:disabled {
   margin-bottom: 28px;
 }
 
+
+.threeCols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 760px) {
+  .threeCols {
+    grid-template-columns: 1fr;
+  }
+}
+
 .scoreBox {
   display: grid;
   gap: 4px;
