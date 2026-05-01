@@ -17,15 +17,68 @@ const adminError = document.getElementById("adminError");
 const revealBtn = document.getElementById("revealBtn");
 const resetBtn = document.getElementById("resetBtn");
 const clearScoresBtn = document.getElementById("clearScoresBtn");
+const leaderboardBtn = document.getElementById("leaderboardBtn");
 
 const phaseLabel = document.getElementById("phaseLabel");
 const timeLeftLabel = document.getElementById("timeLeftLabel");
 const answeredLabel = document.getElementById("answeredLabel");
 const playersList = document.getElementById("playersList");
 const countsList = document.getElementById("countsList");
-const leaderboardBtn = document.getElementById("leaderboardBtn");
+
+const presetQuestionsList = document.getElementById("presetQuestionsList");
 
 const keys = ["A", "B", "C", "D", "E", "F"];
+
+const PRESET_QUESTIONS = [
+  {
+    title: "Networking",
+    question: "What does IP stand for?",
+    options: [
+      "Internet Protocol",
+      "Internal Program",
+      "Internet Provider",
+      "Input Process",
+    ],
+    correctKey: "A",
+    durationSeconds: 15,
+  },
+  {
+    title: "Computer Basics",
+    question: "Which part stores files permanently?",
+    options: [
+      "RAM",
+      "CPU",
+      "Storage drive",
+      "Monitor",
+    ],
+    correctKey: "C",
+    durationSeconds: 15,
+  },
+  {
+    title: "Cyber Safety",
+    question: "What should you do with a suspicious email link?",
+    options: [
+      "Click it quickly",
+      "Forward it to everyone",
+      "Ignore warnings",
+      "Do not click it and report it",
+    ],
+    correctKey: "D",
+    durationSeconds: 15,
+  },
+  {
+    title: "Hardware",
+    question: "What does RAM mainly do?",
+    options: [
+      "Stores files forever",
+      "Temporarily holds active data",
+      "Powers the monitor",
+      "Connects to Wi-Fi",
+    ],
+    correctKey: "B",
+    durationSeconds: 15,
+  },
+];
 
 function addOptionInput(value = "") {
   const currentCount = optionInputs.querySelectorAll("input").length;
@@ -38,7 +91,49 @@ function addOptionInput(value = "") {
   optionInputs.appendChild(wrap);
 }
 
+function clearOptionInputs() {
+  optionInputs.innerHTML = "";
+}
+
+function preloadQuestion(preset) {
+  question.value = preset.question;
+  duration.value = preset.durationSeconds || 15;
+  correctKey.value = preset.correctKey;
+
+  clearOptionInputs();
+
+  for (const optionText of preset.options.slice(0, 6)) {
+    addOptionInput(optionText);
+  }
+
+  adminError.textContent = "";
+}
+
+function renderPresetQuestions() {
+  if (!presetQuestionsList) return;
+
+  presetQuestionsList.innerHTML = "";
+
+  for (const preset of PRESET_QUESTIONS) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "presetQuestionButton";
+    button.innerHTML = `
+      <strong>${escapeHtml(preset.title)}</strong>
+      <span>${escapeHtml(preset.question)}</span>
+    `;
+
+    button.addEventListener("click", () => {
+      preloadQuestion(preset);
+    });
+
+    presetQuestionsList.appendChild(button);
+  }
+}
+
 for (let i = 0; i < 4; i++) addOptionInput();
+
+renderPresetQuestions();
 
 addOptionBtn.addEventListener("click", () => addOptionInput());
 
@@ -106,7 +201,12 @@ socket.on("adminState", renderAdminState);
 
 function renderAdminState(state) {
   phaseLabel.textContent = state.phase;
-  timeLeftLabel.textContent = (state.timeLeftMs / 1000).toFixed(1);
+
+  if (state.phase === "countdown") {
+    timeLeftLabel.textContent = `${(state.countdownLeftMs / 1000).toFixed(1)} countdown`;
+  } else {
+    timeLeftLabel.textContent = (state.timeLeftMs / 1000).toFixed(1);
+  }
 
   const answered = state.players.filter((p) => p.hasAnswered).length;
   answeredLabel.textContent = `${answered} / ${state.players.length}`;
@@ -118,6 +218,7 @@ function renderAdminState(state) {
     row.innerHTML = `
       <strong>${escapeHtml(player.name)}</strong>
       <span>Score: ${player.score}</span>
+      <span>Streak: ${player.correctStreak || 0}</span>
       <span>${player.hasAnswered ? `Answered ${player.answerKey}` : "Waiting"}</span>
     `;
     playersList.appendChild(row);
