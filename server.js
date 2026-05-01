@@ -27,6 +27,7 @@ const state = {
   leaderboard: null,
   previousLeaderboardRanks: {},
   questionScored: false,
+  questionStartedAt: null,
 };
 
 let timerInterval = null;
@@ -50,6 +51,12 @@ function publicState() {
       answerKey: p.answerKey,
       hasAnswered: Boolean(p.answerKey),
       score: p.score || 0,
+      correctStreak: p.correctStreak || 0,
+      lastPointsEarned: p.lastPointsEarned || 0,
+      lastBasePoints: p.lastBasePoints || 0,
+      lastSpeedBonus: p.lastSpeedBonus || 0,
+      lastStreakBonus: p.lastStreakBonus || 0,
+      lastCorrect: Boolean(p.lastCorrect),
     })),
     lastResults: state.lastResults,
     leaderboard: state.leaderboard,
@@ -66,6 +73,12 @@ function adminState() {
       answerKey: p.answerKey,
       hasAnswered: Boolean(p.answerKey),
       score: p.score || 0,
+      correctStreak: p.correctStreak || 0,
+      lastPointsEarned: p.lastPointsEarned || 0,
+      lastBasePoints: p.lastBasePoints || 0,
+      lastSpeedBonus: p.lastSpeedBonus || 0,
+      lastStreakBonus: p.lastStreakBonus || 0,
+      lastCorrect: Boolean(p.lastCorrect),
       answeredAt: p.answeredAt,
     })),
   };
@@ -119,8 +132,39 @@ function buildResults() {
       answerKey: p.answerKey || null,
       correct: p.answerKey === state.correctKey,
       score: p.score || 0,
+      correctStreak: p.correctStreak || 0,
+      pointsEarned: p.lastPointsEarned || 0,
+      basePoints: p.lastBasePoints || 0,
+      speedBonus: p.lastSpeedBonus || 0,
+      streakBonus: p.lastStreakBonus || 0,
     })),
   };
+}
+
+function getStreakBonus(streak) {
+  if (streak >= 5) return 500;
+  if (streak === 4) return 300;
+  if (streak === 3) return 200;
+  if (streak === 2) return 100;
+  return 0;
+}
+
+function getSpeedBonus(answeredAt) {
+  if (!state.questionStartedAt || !answeredAt) return 0;
+
+  const elapsedMs = Math.max(0, answeredAt - state.questionStartedAt);
+
+  // Bonus only exists for the first 5 seconds.
+  if (elapsedMs >= 5000) return 0;
+
+  // Per .1 second:
+  // 0.0s = 100
+  // 0.1s = 98
+  // 1.0s = 80
+  // 4.8s = 4
+  // 5.0s = 0
+  const elapsedTenths = Math.floor(elapsedMs / 100);
+  return Math.max(0, 100 - elapsedTenths * 2);
 }
 
 function revealQuestion() {
@@ -133,8 +177,30 @@ function revealQuestion() {
 
   if (!state.questionScored) {
     for (const player of Object.values(state.players)) {
-      if (player.answerKey === state.correctKey) {
-        player.score = (player.score || 0) + 1;
+      const wasCorrect = player.answerKey === state.correctKey;
+
+      player.lastPointsEarned = 0;
+      player.lastBasePoints = 0;
+      player.lastSpeedBonus = 0;
+      player.lastStreakBonus = 0;
+      player.lastCorrect = wasCorrect;
+
+      if (wasCorrect) {
+        player.correctStreak = (player.correctStreak || 0) + 1;
+
+        const basePoints = 1000;
+        const speedBonus = getSpeedBonus(player.answeredAt);
+        const streakBonus = getStreakBonus(player.correctStreak);
+        const totalPoints = basePoints + speedBonus + streakBonus;
+
+        player.lastBasePoints = basePoints;
+        player.lastSpeedBonus = speedBonus;
+        player.lastStreakBonus = streakBonus;
+        player.lastPointsEarned = totalPoints;
+
+        player.score = (player.score || 0) + totalPoints;
+      } else {
+        player.correctStreak = 0;
       }
     }
 
@@ -237,6 +303,12 @@ io.on("connection", (socket) => {
       answerKey: null,
       answeredAt: null,
       score: 0,
+      correctStreak: 0,
+      lastPointsEarned: 0,
+      lastBasePoints: 0,
+      lastSpeedBonus: 0,
+      lastStreakBonus: 0,
+      lastCorrect: false,
     };
 
     callback?.({ ok: true });
@@ -288,7 +360,8 @@ io.on("connection", (socket) => {
     state.options = options;
     state.correctKey = correctKey;
     state.durationSeconds = durationSeconds;
-    state.endsAt = Date.now() + durationSeconds * 1000;
+    state.questionStartedAt = Date.now();
+    state.endsAt = state.questionStartedAt + durationSeconds * 1000;
     state.lastResults = null;
     state.leaderboard = null;
     state.questionScored = false;
@@ -296,6 +369,11 @@ io.on("connection", (socket) => {
     for (const player of Object.values(state.players)) {
       player.answerKey = null;
       player.answeredAt = null;
+      player.lastPointsEarned = 0;
+      player.lastBasePoints = 0;
+      player.lastSpeedBonus = 0;
+      player.lastStreakBonus = 0;
+      player.lastCorrect = false;
     }
 
     callback?.({ ok: true });
@@ -390,6 +468,7 @@ io.on("connection", (socket) => {
     state.options = [];
     state.correctKey = "";
     state.endsAt = null;
+    state.questionStartedAt = null;
     state.lastResults = null;
     state.leaderboard = null;
     state.questionScored = false;
@@ -397,6 +476,11 @@ io.on("connection", (socket) => {
     for (const player of Object.values(state.players)) {
       player.answerKey = null;
       player.answeredAt = null;
+      player.lastPointsEarned = 0;
+      player.lastBasePoints = 0;
+      player.lastSpeedBonus = 0;
+      player.lastStreakBonus = 0;
+      player.lastCorrect = false;
     }
 
     callback?.({ ok: true });
@@ -411,6 +495,12 @@ io.on("connection", (socket) => {
 
     for (const player of Object.values(state.players)) {
       player.score = 0;
+      player.correctStreak = 0;
+      player.lastPointsEarned = 0;
+      player.lastBasePoints = 0;
+      player.lastSpeedBonus = 0;
+      player.lastStreakBonus = 0;
+      player.lastCorrect = false;
     }
 
     state.previousLeaderboardRanks = {};
