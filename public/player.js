@@ -39,6 +39,7 @@ lobbyMusic.volume = Number(localStorage.getItem("quizMusicVolume") ?? 35) / 100;
 
 let joinedName = localStorage.getItem("quizPlayerName") || "";
 let myAnswer = null;
+let lastRenderedQuestionKey = "";
 
 if (joinedName) {
   playerName.value = joinedName;
@@ -110,12 +111,27 @@ function showOnly(view) {
   }
 }
 
-function renderOptions(state) {
+function getQuestionRenderKey(state) {
+  return JSON.stringify({
+    question: state.question || "",
+    options: state.options || [],
+  });
+}
+
+function renderOptions(state, force = false) {
+  const renderKey = getQuestionRenderKey(state);
+
+  if (!force && renderKey === lastRenderedQuestionKey) {
+    return;
+  }
+
+  lastRenderedQuestionKey = renderKey;
   optionsGrid.innerHTML = "";
 
   for (const option of state.options || []) {
     const button = document.createElement("button");
     button.className = "optionButton";
+    button.dataset.answerKey = option.key;
     button.disabled = Boolean(myAnswer) || state.phase !== "question";
     button.innerHTML = `<strong>${option.key}</strong><span>${escapeHtml(option.text)}</span>`;
 
@@ -124,14 +140,25 @@ function renderOptions(state) {
     }
 
     button.addEventListener("click", () => {
+      if (myAnswer) return;
+
+      button.disabled = true;
+      answerStatus.textContent = `Submitting ${option.key}...`;
+
       socket.emit("submitAnswer", option.key, (res) => {
         if (!res.ok) {
+          button.disabled = false;
           answerStatus.textContent = res.error;
           return;
         }
 
         myAnswer = option.key;
         answerStatus.textContent = `Answer submitted: ${option.key}`;
+
+        for (const btn of optionsGrid.querySelectorAll(".optionButton")) {
+          btn.disabled = true;
+          btn.classList.toggle("selected", btn.dataset.answerKey === option.key);
+        }
       });
     });
 
@@ -183,6 +210,15 @@ function renderResults(results) {
     resultsList.appendChild(row);
   }
 }
+
+function updateOptionButtonState(state) {
+  for (const button of optionsGrid.querySelectorAll(".optionButton")) {
+    const key = button.dataset.answerKey;
+    button.disabled = Boolean(myAnswer) || state.phase !== "question";
+    button.classList.toggle("selected", myAnswer === key);
+  }
+}
+
 
 function renderLeaderboard(leaderboard) {
   leaderboardList.innerHTML = "";
@@ -270,6 +306,7 @@ socket.on("state", (state) => {
 
   if (state.phase === "lobby") {
     myAnswer = null;
+    lastRenderedQuestionKey = "";
     showOnly(lobbyView);
     playLobbyMusic();
     return;
@@ -278,21 +315,22 @@ socket.on("state", (state) => {
   if (state.phase === "countdown") {
     stopLobbyMusic();
     myAnswer = null;
+    lastRenderedQuestionKey = "";
     showOnly(countdownView);
-
+  
     renderCountdownQuestion(state);
-
+  
     const secondsLeft = Math.max(0, state.countdownLeftMs / 1000);
     const displayNumber = Math.max(1, Math.ceil(secondsLeft));
-
+  
     if (countdownNumber) {
       countdownNumber.textContent = String(displayNumber);
-
+  
       countdownNumber.classList.remove("countdownPulse");
       void countdownNumber.offsetWidth;
       countdownNumber.classList.add("countdownPulse");
     }
-
+  
     return;
   }
 
@@ -326,6 +364,7 @@ socket.on("state", (state) => {
     }
 
     renderOptions(state);
+    updateOptionButtonState(state);
     return;
   }
 
