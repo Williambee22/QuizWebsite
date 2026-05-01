@@ -13,6 +13,7 @@ const lobbyView = document.getElementById("lobbyView");
 const questionView = document.getElementById("questionView");
 const lockedView = document.getElementById("lockedView");
 const revealView = document.getElementById("revealView");
+const leaderboardView = document.getElementById("leaderboardView");
 
 const timerLabel = document.getElementById("timerLabel");
 const timerFill = document.getElementById("timerFill");
@@ -21,8 +22,13 @@ const optionsGrid = document.getElementById("optionsGrid");
 const answerStatus = document.getElementById("answerStatus");
 const correctText = document.getElementById("correctText");
 const resultsList = document.getElementById("resultsList");
-const leaderboardView = document.getElementById("leaderboardView");
 const leaderboardList = document.getElementById("leaderboardList");
+
+const musicVolume = document.getElementById("musicVolume");
+
+const lobbyMusic = new Audio("/lobby-music.mp3");
+lobbyMusic.loop = true;
+lobbyMusic.volume = Number(localStorage.getItem("quizMusicVolume") ?? 35) / 100;
 
 let joinedName = localStorage.getItem("quizPlayerName") || "";
 let myAnswer = null;
@@ -31,10 +37,34 @@ if (joinedName) {
   playerName.value = joinedName;
 }
 
+if (musicVolume) {
+  musicVolume.value = String(Math.round(lobbyMusic.volume * 100));
+
+  musicVolume.addEventListener("input", () => {
+    const volume = Number(musicVolume.value) / 100;
+    lobbyMusic.volume = volume;
+    localStorage.setItem("quizMusicVolume", String(musicVolume.value));
+  });
+}
+
+function playLobbyMusic() {
+  if (!joinedName) return;
+
+  lobbyMusic.play().catch(() => {
+    // Browser blocked autoplay. It should work after the player clicks Join.
+  });
+}
+
+function stopLobbyMusic() {
+  lobbyMusic.pause();
+  lobbyMusic.currentTime = 0;
+}
+
 joinForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
   const name = playerName.value.trim();
+
   socket.emit("joinPlayer", name, (res) => {
     if (!res.ok) {
       joinError.textContent = res.error;
@@ -46,13 +76,22 @@ joinForm.addEventListener("submit", (event) => {
     nameLabel.textContent = name;
     joinCard.classList.add("hidden");
     gameCard.classList.remove("hidden");
+
+    playLobbyMusic();
   });
 });
 
 function showOnly(view) {
-  for (const element of [lobbyView, questionView, lockedView, revealView, leaderboardView]) {
+  for (const element of [
+    lobbyView,
+    questionView,
+    lockedView,
+    revealView,
+    leaderboardView,
+  ]) {
     element.classList.add("hidden");
   }
+
   view.classList.remove("hidden");
 }
 
@@ -139,6 +178,7 @@ function renderLeaderboard(leaderboard) {
     row.className = `leaderboardRow move-${entry.movement}`;
 
     let movementText = "—";
+
     if (entry.movement === "up") {
       movementText = `▲ ${entry.movementAmount}`;
     } else if (entry.movement === "down") {
@@ -158,6 +198,73 @@ function renderLeaderboard(leaderboard) {
   }
 }
 
+socket.on("state", (state) => {
+  const me = state.players.find((p) => p.name === joinedName);
+
+  if (me) {
+    scoreLabel.textContent = me.score;
+  }
+
+  if (state.phase === "lobby") {
+    myAnswer = null;
+    showOnly(lobbyView);
+    playLobbyMusic();
+    return;
+  }
+
+  if (state.phase === "question") {
+    stopLobbyMusic();
+
+    if (!state.players.some((p) => p.name === joinedName && p.hasAnswered)) {
+      myAnswer = null;
+    }
+
+    showOnly(questionView);
+    questionText.textContent = state.question;
+
+    const secondsLeft = Math.max(0, state.timeLeftMs / 1000);
+    timerLabel.textContent = secondsLeft.toFixed(1);
+
+    const pct =
+      state.durationSeconds > 0
+        ? Math.max(0, Math.min(100, (secondsLeft / state.durationSeconds) * 100))
+        : 0;
+
+    timerFill.style.width = `${pct}%`;
+
+    const myPlayer = state.players.find((p) => p.name === joinedName);
+
+    if (myPlayer?.answerKey) {
+      myAnswer = myPlayer.answerKey;
+      answerStatus.textContent = `Answer submitted: ${myAnswer}`;
+    } else {
+      answerStatus.textContent = "Choose one answer.";
+    }
+
+    renderOptions(state);
+    return;
+  }
+
+  if (state.phase === "locked") {
+    stopLobbyMusic();
+    showOnly(lockedView);
+    return;
+  }
+
+  if (state.phase === "reveal") {
+    stopLobbyMusic();
+    showOnly(revealView);
+    renderResults(state.lastResults);
+    return;
+  }
+
+  if (state.phase === "leaderboard") {
+    stopLobbyMusic();
+    showOnly(leaderboardView);
+    renderLeaderboard(state.leaderboard);
+    return;
+  }
+});
 
 function escapeHtml(value) {
   return String(value)
