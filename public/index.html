@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real-Time Quiz</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="card" id="joinCard">
+      <h1>Join Quiz</h1>
+      <p class="muted">Enter your name to join the live quiz.</p>
+
+      <form id="joinForm" class="stack">
+        <input id="playerName" maxlength="30" placeholder="Your name" autocomplete="off" />
+        <button type="submit">Join</button>
+      </form>
+
+      <p id="joinError" class="error"></p>
+    </section>
+
+    <section class="card hidden" id="gameCard">
+      <div class="topbar">
+        <div>
+          <p class="eyebrow">Player</p>
+          <h2 id="nameLabel"></h2>
+        </div>
+        <div class="scoreBox">
+          <span>Score</span>
+          <strong id="scoreLabel">0</strong>
+        </div>
+      </div>
+
+      <div id="lobbyView">
+        <h1>Waiting for the admin...</h1>
+        <p class="muted">The next question will appear automatically.</p>
+      </div>
+
+      <div id="questionView" class="hidden">
+        <div class="timerWrap">
+          <div class="timerText"><span id="timerLabel">15.0</span>s</div>
+          <div class="timerBar">
+            <div id="timerFill"></div>
+          </div>
+        </div>
+
+        <h1 id="questionText"></h1>
+        <div id="optionsGrid" class="options"></div>
+        <p id="answerStatus" class="muted"></p>
+      </div>
+
+      <div id="lockedView" class="hidden">
+        <h1>Time is up.</h1>
+        <p class="muted">Waiting for the admin to reveal the answer.</p>
+      </div>
+
+      <div id="revealView" class="hidden">
+        <h1>Answer Revealed</h1>
+        <p id="correctText" class="correct"></p>
+        <div id="resultsList" class="results"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/player.js"></script>
+</body>
+</html>
