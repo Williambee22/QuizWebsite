@@ -10,7 +10,7 @@
   <main class="shell adminShell">
     <section class="card" id="loginCard">
       <h1>Admin Login</h1>
-      <p class="muted">Default password is <code>admin123</code>. Change it with ADMIN_PASSWORD.</p>
+      <p class="muted">Use the password set in <code>ADMIN_PASSWORD</code>.</p>
 
       <form id="loginForm" class="stack">
         <input id="password" type="password" placeholder="Admin password" />
@@ -26,21 +26,30 @@
           <p class="eyebrow">Admin Panel</p>
           <h1>Real-Time Quiz Control</h1>
         </div>
+
         <a class="ghostLink" href="/" target="_blank">Open Player Page</a>
       </div>
 
       <section class="presetBox">
         <div class="optionHeader">
           <div>
-            <h2>Preset Questions</h2>
-            <p class="muted">Click one to preload the question and answers.</p>
+            <h2>Saved Questions</h2>
+            <p class="muted">Create saved questions as admin, then click one to preload it.</p>
           </div>
         </div>
-      
+
+        <form id="savePresetForm" class="savePresetForm">
+          <input
+            id="presetTitle"
+            maxlength="80"
+            placeholder="Preset name, ex: Round 1 - Question 1"
+          />
+          <button type="submit" class="secondary">Save Current Question</button>
+        </form>
+
         <div id="presetQuestionsList" class="presetQuestionsList"></div>
       </section>
 
-      
       <form id="questionForm" class="stack">
         <label>
           Question
@@ -71,15 +80,16 @@
             <label>Answer choices</label>
             <button type="button" class="secondary" id="addOptionBtn">Add choice</button>
           </div>
+
           <div id="optionInputs" class="stack optionInputs"></div>
         </div>
 
         <div class="actions">
           <button type="submit">Start Question</button>
           <button type="button" class="secondary" id="revealBtn">Reveal Answer</button>
+          <button type="button" class="secondary" id="leaderboardBtn">Show Leaderboard</button>
           <button type="button" class="secondary" id="resetBtn">Reset Lobby</button>
           <button type="button" class="danger" id="clearScoresBtn">Clear Scores</button>
-          <button type="button" class="secondary" id="leaderboardBtn">Show Leaderboard</button>
         </div>
 
         <p id="adminError" class="error"></p>
