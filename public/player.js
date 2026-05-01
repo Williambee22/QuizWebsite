@@ -88,9 +88,34 @@ function renderOptions(state) {
 function renderResults(results) {
   if (!results) return;
 
-  correctText.textContent = `Correct answer: ${results.correctKey}`;
+  const myResult = results.players?.find((p) => p.name === joinedName);
+
+  if (myResult) {
+    if (myResult.correct) {
+      correctText.innerHTML = `
+        <span class="correct">Correct!</span><br>
+        You earned <strong>${myResult.pointsEarned || 0}</strong> points.
+        <br>
+        <span class="muted">
+          Base: ${myResult.basePoints || 0} |
+          Speed: +${myResult.speedBonus || 0} |
+          Streak: +${myResult.streakBonus || 0}
+        </span>
+      `;
+    } else {
+      correctText.innerHTML = `
+        <span class="wrong">Wrong.</span><br>
+        Correct answer: <strong>${results.correctKey}</strong>
+        <br>
+        <span class="muted">You earned 0 points. Your streak was reset.</span>
+      `;
+    }
+  } else {
+    correctText.textContent = `Correct answer: ${results.correctKey}`;
+  }
 
   resultsList.innerHTML = "";
+
   for (const [key, count] of Object.entries(results.counts)) {
     const row = document.createElement("div");
     row.className = key === results.correctKey ? "resultRow correctRow" : "resultRow";
@@ -98,64 +123,6 @@ function renderResults(results) {
     resultsList.appendChild(row);
   }
 }
-
-socket.on("state", (state) => {
-  const me = state.players.find((p) => p.name === joinedName);
-  if (me) {
-    scoreLabel.textContent = me.score;
-  }
-
-  if (state.phase === "lobby") {
-    myAnswer = null;
-    showOnly(lobbyView);
-    return;
-  }
-
-  if (state.phase === "question") {
-    if (!state.players.some((p) => p.name === joinedName && p.hasAnswered)) {
-      myAnswer = null;
-    }
-
-    showOnly(questionView);
-    questionText.textContent = state.question;
-
-    const secondsLeft = Math.max(0, state.timeLeftMs / 1000);
-    timerLabel.textContent = secondsLeft.toFixed(1);
-
-    const pct = state.durationSeconds > 0
-      ? Math.max(0, Math.min(100, (secondsLeft / state.durationSeconds) * 100))
-      : 0;
-    timerFill.style.width = `${pct}%`;
-
-    const myPlayer = state.players.find((p) => p.name === joinedName);
-    if (myPlayer?.answerKey) {
-      myAnswer = myPlayer.answerKey;
-      answerStatus.textContent = `Answer submitted: ${myAnswer}`;
-    } else {
-      answerStatus.textContent = "Choose one answer.";
-    }
-
-    renderOptions(state);
-    return;
-  }
-
-  if (state.phase === "locked") {
-    showOnly(lockedView);
-    return;
-  }
-
-  if (state.phase === "reveal") {
-    showOnly(revealView);
-    renderResults(state.lastResults);
-    return;
-  }
-  
-  if (state.phase === "leaderboard") {
-    showOnly(leaderboardView);
-    renderLeaderboard(state.leaderboard);
-    return;
-  }
-});
 
 function renderLeaderboard(leaderboard) {
   leaderboardList.innerHTML = "";
