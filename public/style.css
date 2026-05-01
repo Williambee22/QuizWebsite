@@ -148,6 +148,13 @@ button:disabled {
   font-size: 1.25rem;
 }
 
+.wrong {
+  color: var(--danger);
+  font-weight: 1000;
+  font-size: 1.4rem;
+}
+
+
 .topbar {
   display: flex;
   align-items: flex-start;
