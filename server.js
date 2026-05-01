@@ -16,14 +16,16 @@ app.use(express.static("public"));
  * Everyone sees the same quiz state because every change is emitted from here.
  */
 const state = {
-  phase: "lobby", // lobby | question | locked | reveal
+  phase: "lobby", // lobby | question | locked | reveal | leaderboard
   question: "",
-  options: [], // [{ key: "A", text: "Answer" }]
+  options: [],
   correctKey: "",
   durationSeconds: 15,
   endsAt: null,
-  players: {}, // socket.id -> { id, name, answerKey, answeredAt, score }
+  players: {},
   lastResults: null,
+  leaderboard: null,
+  previousLeaderboardRanks: {},
 };
 
 let timerInterval = null;
