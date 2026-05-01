@@ -1,5 +1,8 @@
 const express = require("express");
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
 const { Server } = require("socket.io");
 
 const app = express();
@@ -8,6 +11,34 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "crownsucks67";
+
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
+const PRESETS_FILE = path.join(DATA_DIR, "question-presets.json");
+
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+function loadQuestionPresets() {
+  try {
+    if (!fs.existsSync(PRESETS_FILE)) {
+      fs.writeFileSync(PRESETS_FILE, "[]", "utf8");
+      return [];
+    }
+
+    const raw = fs.readFileSync(PRESETS_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.error("Failed to load question presets:", err);
+    return [];
+  }
+}
+
+function saveQuestionPresets(presets) {
+  fs.writeFileSync(PRESETS_FILE, JSON.stringify(presets, null, 2), "utf8");
+}
+
+let questionPresets = loadQuestionPresets();
 
 app.use(express.static("public"));
 
@@ -449,6 +480,97 @@ io.on("connection", (socket) => {
     startCountdown();
   });
 
+  socket.on("getQuestionPresets", (callback) => {
+    if (!socket.rooms.has("admins")) {
+      callback?.({ ok: false, error: "Admin only." });
+      return;
+    }
+  
+    callback?.({
+      ok: true,
+      presets: questionPresets,
+    });
+  });
+  
+  socket.on("saveQuestionPreset", (payload, callback) => {
+    if (!socket.rooms.has("admins")) {
+      callback?.({ ok: false, error: "Admin only." });
+      return;
+    }
+  
+    const title = String(payload?.title || "").trim().slice(0, 80);
+    const question = String(payload?.question || "").trim();
+    const options = normalizeOptions(payload?.options || []);
+    const correctKey = String(payload?.correctKey || "").trim().toUpperCase();
+    const durationSeconds = Math.max(
+      5,
+      Math.min(120, Number(payload?.durationSeconds || 15))
+    );
+  
+    if (!title) {
+      callback?.({ ok: false, error: "Preset title is required." });
+      return;
+    }
+  
+    if (!question) {
+      callback?.({ ok: false, error: "Question is required." });
+      return;
+    }
+  
+    if (options.length < 2) {
+      callback?.({ ok: false, error: "At least 2 answer choices are required." });
+      return;
+    }
+  
+    if (!options.some((o) => o.key === correctKey)) {
+      callback?.({ ok: false, error: "Correct answer must match one of the choices." });
+      return;
+    }
+  
+    const preset = {
+      id: crypto.randomUUID(),
+      title,
+      question,
+      options: options.map((o) => o.text),
+      correctKey,
+      durationSeconds,
+      createdAt: Date.now(),
+    };
+  
+    questionPresets.push(preset);
+    saveQuestionPresets(questionPresets);
+  
+    callback?.({
+      ok: true,
+      preset,
+      presets: questionPresets,
+    });
+  });
+  
+  socket.on("deleteQuestionPreset", (presetId, callback) => {
+    if (!socket.rooms.has("admins")) {
+      callback?.({ ok: false, error: "Admin only." });
+      return;
+    }
+  
+    const id = String(presetId || "");
+    const beforeCount = questionPresets.length;
+  
+    questionPresets = questionPresets.filter((preset) => preset.id !== id);
+  
+    if (questionPresets.length === beforeCount) {
+      callback?.({ ok: false, error: "Preset not found." });
+      return;
+    }
+  
+    saveQuestionPresets(questionPresets);
+  
+    callback?.({
+      ok: true,
+      presets: questionPresets,
+    });
+  });
+  
   socket.on("submitAnswer", (answerKey, callback) => {
     const player = state.players[socket.id];
 
