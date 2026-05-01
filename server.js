@@ -16,7 +16,7 @@ app.use(express.static("public"));
  * Everyone sees the same quiz state because every change is emitted from here.
  */
 const state = {
-  phase: "lobby", // lobby | question | locked | reveal | leaderboard
+  phase: "lobby", // lobby | question | reveal | leaderboard
   question: "",
   options: [],
   correctKey: "",
@@ -26,6 +26,7 @@ const state = {
   lastResults: null,
   leaderboard: null,
   previousLeaderboardRanks: {},
+  questionScored: false,
 };
 
 let timerInterval = null;
@@ -80,41 +81,6 @@ function clearTimer() {
   timerInterval = null;
 }
 
-function revealQuestion() {
-  clearTimer();
-
-  if (state.phase === "reveal") return;
-
-  for (const player of Object.values(state.players)) {
-    if (player.answerKey === state.correctKey) {
-      player.score = (player.score || 0) + 1;
-    }
-  }
-
-  state.phase = "reveal";
-  state.endsAt = null;
-  state.lastResults = buildResults();
-
-  emitState();
-}
-
-function startTimer() {
-  clearTimer();
-  timerInterval = setInterval(() => {
-    if (state.phase !== "question" || !state.endsAt) {
-      clearTimer();
-      return;
-    }
-
-    if (Date.now() >= state.endsAt) {
-      revealQuestion();
-      return;
-    }
-
-    emitState();
-  }, 250);
-}
-
 function normalizeOptions(rawOptions) {
   const keys = ["A", "B", "C", "D", "E", "F"];
 
@@ -129,6 +95,7 @@ function normalizeOptions(rawOptions) {
 
 function buildResults() {
   const counts = {};
+
   for (const option of state.options) {
     counts[option.key] = 0;
   }
@@ -154,6 +121,49 @@ function buildResults() {
       score: p.score || 0,
     })),
   };
+}
+
+function revealQuestion() {
+  clearTimer();
+
+  if (state.phase === "reveal") {
+    emitState();
+    return;
+  }
+
+  if (!state.questionScored) {
+    for (const player of Object.values(state.players)) {
+      if (player.answerKey === state.correctKey) {
+        player.score = (player.score || 0) + 1;
+      }
+    }
+
+    state.questionScored = true;
+  }
+
+  state.phase = "reveal";
+  state.endsAt = null;
+  state.lastResults = buildResults();
+
+  emitState();
+}
+
+function startTimer() {
+  clearTimer();
+
+  timerInterval = setInterval(() => {
+    if (state.phase !== "question" || !state.endsAt) {
+      clearTimer();
+      return;
+    }
+
+    if (Date.now() >= state.endsAt) {
+      revealQuestion();
+      return;
+    }
+
+    emitState();
+  }, 250);
 }
 
 function buildLeaderboard() {
@@ -210,8 +220,6 @@ function buildLeaderboard() {
   };
 }
 
-
-
 io.on("connection", (socket) => {
   socket.emit("state", publicState());
 
@@ -235,23 +243,6 @@ io.on("connection", (socket) => {
     emitState();
   });
 
-  socket.on("showLeaderboard", (callback) => {
-    if (!socket.rooms.has("admins")) {
-      callback?.({ ok: false, error: "Admin only." });
-      return;
-    }
-  
-    clearTimer();
-  
-    state.phase = "leaderboard";
-    state.endsAt = null;
-    state.leaderboard = buildLeaderboard();
-  
-    callback?.({ ok: true });
-    emitState();
-  });
-
-  
   socket.on("adminLogin", (password, callback) => {
     if (password !== ADMIN_PASSWORD) {
       callback?.({ ok: false, error: "Wrong admin password." });
@@ -272,7 +263,10 @@ io.on("connection", (socket) => {
     const question = String(payload?.question || "").trim();
     const options = normalizeOptions(payload?.options || []);
     const correctKey = String(payload?.correctKey || "").trim().toUpperCase();
-    const durationSeconds = Math.max(5, Math.min(120, Number(payload?.durationSeconds || 15)));
+    const durationSeconds = Math.max(
+      5,
+      Math.min(120, Number(payload?.durationSeconds || 15))
+    );
 
     if (!question) {
       callback?.({ ok: false, error: "Question is required." });
@@ -296,9 +290,8 @@ io.on("connection", (socket) => {
     state.durationSeconds = durationSeconds;
     state.endsAt = Date.now() + durationSeconds * 1000;
     state.lastResults = null;
-    leaderboard: null,
-    previousLeaderboardRanks: {},
     state.leaderboard = null;
+    state.questionScored = false;
 
     for (const player of Object.values(state.players)) {
       player.answerKey = null;
@@ -324,7 +317,7 @@ io.on("connection", (socket) => {
     }
 
     if (Date.now() > state.endsAt) {
-      lockQuestion();
+      revealQuestion();
       callback?.({ ok: false, error: "Time is up." });
       return;
     }
@@ -335,6 +328,7 @@ io.on("connection", (socket) => {
     }
 
     const cleanKey = String(answerKey || "").toUpperCase();
+
     if (!state.options.some((o) => o.key === cleanKey)) {
       callback?.({ ok: false, error: "Invalid answer choice." });
       return;
@@ -342,13 +336,13 @@ io.on("connection", (socket) => {
 
     player.answerKey = cleanKey;
     player.answeredAt = Date.now();
-    
+
     callback?.({ ok: true });
-    
+
     const players = Object.values(state.players);
     const everyoneAnswered =
       players.length > 0 && players.every((p) => Boolean(p.answerKey));
-    
+
     if (everyoneAnswered) {
       revealQuestion();
     } else {
@@ -361,10 +355,26 @@ io.on("connection", (socket) => {
       callback?.({ ok: false, error: "Admin only." });
       return;
     }
-  
+
     revealQuestion();
-  
+
     callback?.({ ok: true });
+  });
+
+  socket.on("showLeaderboard", (callback) => {
+    if (!socket.rooms.has("admins")) {
+      callback?.({ ok: false, error: "Admin only." });
+      return;
+    }
+
+    clearTimer();
+
+    state.phase = "leaderboard";
+    state.endsAt = null;
+    state.leaderboard = buildLeaderboard();
+
+    callback?.({ ok: true });
+    emitState();
   });
 
   socket.on("resetLobby", (callback) => {
@@ -382,6 +392,7 @@ io.on("connection", (socket) => {
     state.endsAt = null;
     state.lastResults = null;
     state.leaderboard = null;
+    state.questionScored = false;
 
     for (const player of Object.values(state.players)) {
       player.answerKey = null;
@@ -401,6 +412,9 @@ io.on("connection", (socket) => {
     for (const player of Object.values(state.players)) {
       player.score = 0;
     }
+
+    state.previousLeaderboardRanks = {};
+    state.leaderboard = null;
 
     callback?.({ ok: true });
     emitState();
