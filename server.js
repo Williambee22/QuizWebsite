@@ -49,6 +49,7 @@ function publicState() {
       score: p.score || 0,
     })),
     lastResults: state.lastResults,
+    leaderboard: state.leaderboard,
   };
 }
 
@@ -153,6 +154,62 @@ function buildResults() {
   };
 }
 
+function buildLeaderboard() {
+  const sortedPlayers = Object.values(state.players)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      score: p.score || 0,
+    }))
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.name.localeCompare(b.name);
+    });
+
+  const currentRanks = {};
+
+  sortedPlayers.forEach((player, index) => {
+    currentRanks[player.id] = index + 1;
+  });
+
+  const topFive = sortedPlayers.slice(0, 5).map((player, index) => {
+    const rank = index + 1;
+    const previousRank = state.previousLeaderboardRanks[player.id] || null;
+
+    let movement = "same";
+    let movementAmount = 0;
+
+    if (previousRank === null) {
+      movement = "new";
+    } else if (previousRank > rank) {
+      movement = "up";
+      movementAmount = previousRank - rank;
+    } else if (previousRank < rank) {
+      movement = "down";
+      movementAmount = rank - previousRank;
+    }
+
+    return {
+      id: player.id,
+      name: player.name,
+      score: player.score,
+      rank,
+      previousRank,
+      movement,
+      movementAmount,
+    };
+  });
+
+  state.previousLeaderboardRanks = currentRanks;
+
+  return {
+    topFive,
+    shownAt: Date.now(),
+  };
+}
+
+
+
 io.on("connection", (socket) => {
   socket.emit("state", publicState());
 
@@ -176,6 +233,23 @@ io.on("connection", (socket) => {
     emitState();
   });
 
+  socket.on("showLeaderboard", (callback) => {
+    if (!socket.rooms.has("admins")) {
+      callback?.({ ok: false, error: "Admin only." });
+      return;
+    }
+  
+    clearTimer();
+  
+    state.phase = "leaderboard";
+    state.endsAt = null;
+    state.leaderboard = buildLeaderboard();
+  
+    callback?.({ ok: true });
+    emitState();
+  });
+
+  
   socket.on("adminLogin", (password, callback) => {
     if (password !== ADMIN_PASSWORD) {
       callback?.({ ok: false, error: "Wrong admin password." });
@@ -220,6 +294,9 @@ io.on("connection", (socket) => {
     state.durationSeconds = durationSeconds;
     state.endsAt = Date.now() + durationSeconds * 1000;
     state.lastResults = null;
+    leaderboard: null,
+    previousLeaderboardRanks: {},
+    state.leaderboard = null;
 
     for (const player of Object.values(state.players)) {
       player.answerKey = null;
@@ -302,6 +379,7 @@ io.on("connection", (socket) => {
     state.correctKey = "";
     state.endsAt = null;
     state.lastResults = null;
+    state.leaderboard = null;
 
     for (const player of Object.values(state.players)) {
       player.answerKey = null;
