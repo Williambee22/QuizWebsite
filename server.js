@@ -47,7 +47,7 @@ app.use(express.static("public"));
  * Everyone sees the same quiz state because every change is emitted from here.
  */
 const state = {
-  phase: "lobby", // lobby | countdown | question | reveal | leaderboard
+  phase: "lobby", // lobby | countdown | question | reveal | leaderboard | finalResults
   question: "",
   options: [],
   correctKey: "",
@@ -64,6 +64,7 @@ const state = {
   previousLeaderboardRanks: {},
   questionScored: false,
   questionStartedAt: null,
+  finalResults: null,
 };
 
 let timerInterval = null;
@@ -109,6 +110,7 @@ function publicState() {
     })),
     lastResults: state.lastResults,
     leaderboard: state.leaderboard,
+    finalResults: state.finalResults,
   };
 }
 
@@ -384,6 +386,108 @@ function buildLeaderboard() {
   };
 }
 
+function buildFinalResultsEntries() {
+  return Object.values(state.players)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      score: p.score || 0,
+      correctStreak: p.correctStreak || 0,
+    }))
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.name.localeCompare(b.name);
+    })
+    .map((player, index) => ({
+      ...player,
+      rank: index + 1,
+    }));
+}
+
+function getFinalRevealDelay(nextEntry) {
+  if (!nextEntry) return 0;
+
+  // Delay before revealing 3rd place.
+  if (nextEntry.rank === 3) return 3000;
+
+  // Delay before revealing 2nd and 1st place.
+  if (nextEntry.rank === 2) return 4000;
+  if (nextEntry.rank === 1) return 4000;
+
+  // Normal reveal speed.
+  return 1000;
+}
+
+function revealNextFinalResult() {
+  if (state.phase !== "finalResults" || !state.finalResults) {
+    clearTimer();
+    return;
+  }
+
+  const revealOrder = state.finalResults.revealOrder;
+
+  if (state.finalResults.revealedCount >= revealOrder.length) {
+    state.finalResults.complete = true;
+    clearTimer();
+    emitState();
+    return;
+  }
+
+  state.finalResults.revealedCount += 1;
+  state.finalResults.revealedEntries = revealOrder.slice(
+    0,
+    state.finalResults.revealedCount
+  );
+
+  const nextEntry = revealOrder[state.finalResults.revealedCount];
+
+  if (!nextEntry) {
+    state.finalResults.complete = true;
+    clearTimer();
+    emitState();
+    return;
+  }
+
+  const delay = getFinalRevealDelay(nextEntry);
+
+  emitState();
+
+  timerInterval = setTimeout(() => {
+    revealNextFinalResult();
+  }, delay);
+}
+
+function startFinalResultsReveal() {
+  clearTimer();
+
+  const rankedEntries = buildFinalResultsEntries();
+
+  // Reveal from bottom to top.
+  const revealOrder = [...rankedEntries].reverse();
+
+  state.phase = "finalResults";
+  state.endsAt = null;
+  state.countdownEndsAt = null;
+  state.pendingQuestion = null;
+  state.leaderboard = null;
+
+  state.finalResults = {
+    rankedEntries,
+    revealOrder,
+    revealedEntries: [],
+    revealedCount: 0,
+    complete: false,
+    startedAt: Date.now(),
+  };
+
+  emitState();
+
+  // First placement appears immediately.
+  revealNextFinalResult();
+}
+
+
+
 io.on("connection", (socket) => {
   socket.emit("state", publicState());
 
@@ -470,6 +574,7 @@ io.on("connection", (socket) => {
     state.lastResults = null;
     state.leaderboard = null;
     state.questionScored = false;
+    state.finalResults = null;
 
     for (const player of Object.values(state.players)) {
       player.answerKey = null;
@@ -485,6 +590,18 @@ io.on("connection", (socket) => {
     startCountdown();
   });
 
+  socket.on("showFinalResults", (callback) => {
+    if (!socket.rooms.has("admins")) {
+      callback?.({ ok: false, error: "Admin only." });
+      return;
+    }
+  
+    startFinalResultsReveal();
+  
+    callback?.({ ok: true });
+  });
+
+  
   socket.on("getQuestionPresets", (callback) => {
     if (!socket.rooms.has("admins")) {
       callback?.({ ok: false, error: "Admin only." });
@@ -647,6 +764,7 @@ io.on("connection", (socket) => {
     state.countdownEndsAt = null;
     state.pendingQuestion = null;
     state.leaderboard = buildLeaderboard();
+    state.finalResults = null;
 
     callback?.({ ok: true });
     emitState();
@@ -707,6 +825,7 @@ io.on("connection", (socket) => {
 
     state.previousLeaderboardRanks = {};
     state.leaderboard = null;
+    state.finalResults = null;
 
     callback?.({ ok: true });
     emitState();
