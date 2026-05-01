@@ -166,6 +166,148 @@ button:disabled {
   background: rgba(0,0,0,0.22);
 }
 
+
+.leaderboardList {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.leaderboardRow {
+  display: grid;
+  grid-template-columns: 80px 1fr 100px 80px;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 18px;
+  background: rgba(255,255,255,0.08);
+  animation: leaderboardPop 0.45s ease both;
+}
+
+.leaderboardRank {
+  font-size: 1.6rem;
+  font-weight: 1000;
+  color: var(--accent2);
+}
+
+.leaderboardName {
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.leaderboardScore {
+  color: var(--muted);
+  font-weight: 900;
+  text-align: right;
+}
+
+.leaderboardMove {
+  font-weight: 1000;
+  text-align: center;
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.1);
+}
+
+.move-up {
+  animation: moveUpLeaderboard 0.75s ease both;
+  border-color: rgba(40,224,152,0.7);
+  background: rgba(40,224,152,0.14);
+}
+
+.move-down {
+  animation: moveDownLeaderboard 0.75s ease both;
+  border-color: rgba(255,77,109,0.7);
+  background: rgba(255,77,109,0.14);
+}
+
+.move-new {
+  animation: newLeaderboardEntry 0.8s ease both;
+  border-color: rgba(0,212,255,0.7);
+  background: rgba(0,212,255,0.14);
+}
+
+.move-up .leaderboardMove {
+  color: var(--good);
+}
+
+.move-down .leaderboardMove {
+  color: var(--danger);
+}
+
+.move-new .leaderboardMove {
+  color: var(--accent2);
+}
+
+@keyframes leaderboardPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes moveUpLeaderboard {
+  0% {
+    opacity: 0;
+    transform: translateY(42px) scale(0.96);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.02);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes moveDownLeaderboard {
+  0% {
+    opacity: 0;
+    transform: translateY(-42px) scale(0.96);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(8px) scale(1.02);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes newLeaderboardEntry {
+  0% {
+    opacity: 0;
+    transform: scale(0.75) rotate(-2deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.05) rotate(1deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .leaderboardRow {
+    grid-template-columns: 64px 1fr;
+  }
+
+  .leaderboardScore,
+  .leaderboardMove {
+    text-align: left;
+  }
+}
+
+
+
+
+
 .scoreBox span {
   color: var(--muted);
   font-size: 0.8rem;
