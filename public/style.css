@@ -223,6 +223,44 @@ button:disabled {
   background: rgba(40,224,152,0.14);
 }
 
+.musicBox {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 18px;
+  margin-top: 24px;
+  background: rgba(255,255,255,0.06);
+}
+
+.musicBox p {
+  margin-bottom: 0;
+}
+
+.volumeControl {
+  min-width: 220px;
+}
+
+.volumeControl input[type="range"] {
+  padding: 0;
+  accent-color: var(--accent2);
+}
+
+@media (max-width: 760px) {
+  .musicBox {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .volumeControl {
+    min-width: 0;
+  }
+}
+
+
+
 .move-down {
   animation: moveDownLeaderboard 0.75s ease both;
   border-color: rgba(255,77,109,0.7);
