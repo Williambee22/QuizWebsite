@@ -29,6 +29,7 @@ const presetQuestionsList = document.getElementById("presetQuestionsList");
 const savePresetForm = document.getElementById("savePresetForm");
 const presetTitle = document.getElementById("presetTitle");
 const finalResultsBtn = document.getElementById("finalResultsBtn");
+const countdownDuration = document.getElementById("countdownDuration");
 
 const keys = ["A", "B", "C", "D", "E", "F"];
 
@@ -53,6 +54,7 @@ function preloadQuestion(preset) {
   question.value = preset.question;
   duration.value = preset.durationSeconds || 15;
   correctKey.value = preset.correctKey;
+  countdownDuration.value = preset.countdownSeconds ?? 3;
 
   clearOptionInputs();
 
@@ -143,6 +145,7 @@ if (savePresetForm) {
         options,
         correctKey: correctKey.value,
         durationSeconds: Number(duration.value || 15),
+        countdownSeconds: Number(countdownDuration.value || 3),
       },
       (res) => {
         if (!res.ok) {
@@ -186,6 +189,7 @@ questionForm.addEventListener("submit", (event) => {
       options,
       correctKey: correctKey.value,
       durationSeconds: Number(duration.value || 15),
+      countdownSeconds: Number(countdownDuration.value || 3),
     },
     (res) => {
       if (!res.ok) {
