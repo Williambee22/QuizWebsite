@@ -148,6 +148,22 @@ button:disabled {
   font-size: 1.25rem;
 }
 
+.countdownOptions {
+  margin-top: 22px;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.countdownOptionButton {
+  cursor: not-allowed;
+}
+
+#countdownQuestionText {
+  margin-top: 16px;
+  text-align: center;
+}
+
+
 .wrong {
   color: var(--danger);
   font-weight: 1000;
