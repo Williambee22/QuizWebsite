@@ -15,6 +15,7 @@ const questionView = document.getElementById("questionView");
 const lockedView = document.getElementById("lockedView");
 const revealView = document.getElementById("revealView");
 const leaderboardView = document.getElementById("leaderboardView");
+const finalResultsView = document.getElementById("finalResultsView");
 
 const timerLabel = document.getElementById("timerLabel");
 const timerFill = document.getElementById("timerFill");
@@ -24,6 +25,7 @@ const answerStatus = document.getElementById("answerStatus");
 const correctText = document.getElementById("correctText");
 const resultsList = document.getElementById("resultsList");
 const leaderboardList = document.getElementById("leaderboardList");
+const finalResultsList = document.getElementById("finalResultsList");
 
 const countdownNumber = document.getElementById("countdownNumber");
 const countdownQuestionText = document.getElementById("countdownQuestionText");
@@ -94,6 +96,7 @@ function showOnly(view) {
     lockedView,
     revealView,
     leaderboardView,
+    finalResultsView,
   ];
 
   for (const element of views) {
@@ -216,6 +219,48 @@ function renderLeaderboard(leaderboard) {
   }
 }
 
+function renderFinalResults(finalResults) {
+  if (!finalResultsList) return;
+
+  finalResultsList.innerHTML = "";
+
+  const entries = finalResults?.revealedEntries || [];
+
+  if (entries.length === 0) {
+    finalResultsList.innerHTML = `<p class="muted">Final results starting...</p>`;
+    return;
+  }
+
+  for (const entry of entries) {
+    const row = document.createElement("div");
+
+    let medalClass = "";
+    let medalText = "";
+
+    if (entry.rank === 1) {
+      medalClass = "final-gold";
+      medalText = "Gold";
+    } else if (entry.rank === 2) {
+      medalClass = "final-silver";
+      medalText = "Silver";
+    } else if (entry.rank === 3) {
+      medalClass = "final-bronze";
+      medalText = "Bronze";
+    }
+
+    row.className = `finalResultRow ${medalClass}`;
+    row.innerHTML = `
+      <div class="finalPlacement">#${entry.rank}</div>
+      <div class="finalName">${escapeHtml(entry.name)}</div>
+      <div class="finalScore">${entry.score} pts</div>
+      <div class="finalMedal">${medalText}</div>
+    `;
+
+    finalResultsList.appendChild(row);
+  }
+}
+
+
 socket.on("state", (state) => {
   const me = state.players.find((p) => p.name === joinedName);
 
@@ -303,6 +348,14 @@ socket.on("state", (state) => {
     renderLeaderboard(state.leaderboard);
     return;
   }
+
+  if (state.phase === "finalResults") {
+    stopLobbyMusic();
+    showOnly(finalResultsView);
+    renderFinalResults(state.finalResults);
+    return;
+  }
+  
 });
 
 function escapeHtml(value) {
