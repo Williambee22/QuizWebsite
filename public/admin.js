@@ -26,59 +26,12 @@ const playersList = document.getElementById("playersList");
 const countsList = document.getElementById("countsList");
 
 const presetQuestionsList = document.getElementById("presetQuestionsList");
+const savePresetForm = document.getElementById("savePresetForm");
+const presetTitle = document.getElementById("presetTitle");
 
 const keys = ["A", "B", "C", "D", "E", "F"];
 
-const PRESET_QUESTIONS = [
-  {
-    title: "Networking",
-    question: "What does IP stand for?",
-    options: [
-      "Internet Protocol",
-      "Internal Program",
-      "Internet Provider",
-      "Input Process",
-    ],
-    correctKey: "A",
-    durationSeconds: 15,
-  },
-  {
-    title: "Computer Basics",
-    question: "Which part stores files permanently?",
-    options: [
-      "RAM",
-      "CPU",
-      "Storage drive",
-      "Monitor",
-    ],
-    correctKey: "C",
-    durationSeconds: 15,
-  },
-  {
-    title: "Cyber Safety",
-    question: "What should you do with a suspicious email link?",
-    options: [
-      "Click it quickly",
-      "Forward it to everyone",
-      "Ignore warnings",
-      "Do not click it and report it",
-    ],
-    correctKey: "D",
-    durationSeconds: 15,
-  },
-  {
-    title: "Hardware",
-    question: "What does RAM mainly do?",
-    options: [
-      "Stores files forever",
-      "Temporarily holds active data",
-      "Powers the monitor",
-      "Connects to Wi-Fi",
-    ],
-    correctKey: "B",
-    durationSeconds: 15,
-  },
-];
+let savedPresets = [];
 
 function addOptionInput(value = "") {
   const currentCount = optionInputs.querySelectorAll("input").length;
@@ -114,28 +67,95 @@ function renderPresetQuestions() {
 
   presetQuestionsList.innerHTML = "";
 
-  for (const preset of PRESET_QUESTIONS) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "presetQuestionButton";
-    button.innerHTML = `
+  if (savedPresets.length === 0) {
+    presetQuestionsList.innerHTML = `<p class="muted">No saved questions yet.</p>`;
+    return;
+  }
+
+  for (const preset of savedPresets) {
+    const row = document.createElement("div");
+    row.className = "presetQuestionRow";
+
+    const loadButton = document.createElement("button");
+    loadButton.type = "button";
+    loadButton.className = "presetQuestionButton";
+    loadButton.innerHTML = `
       <strong>${escapeHtml(preset.title)}</strong>
       <span>${escapeHtml(preset.question)}</span>
     `;
 
-    button.addEventListener("click", () => {
+    loadButton.addEventListener("click", () => {
       preloadQuestion(preset);
     });
 
-    presetQuestionsList.appendChild(button);
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "danger presetDeleteButton";
+    deleteButton.textContent = "Delete";
+
+    deleteButton.addEventListener("click", () => {
+      socket.emit("deleteQuestionPreset", preset.id, (res) => {
+        if (!res.ok) {
+          adminError.textContent = res.error;
+          return;
+        }
+
+        savedPresets = res.presets || [];
+        renderPresetQuestions();
+      });
+    });
+
+    row.appendChild(loadButton);
+    row.appendChild(deleteButton);
+    presetQuestionsList.appendChild(row);
   }
+}
+
+function loadSavedPresets() {
+  socket.emit("getQuestionPresets", (res) => {
+    if (!res.ok) {
+      adminError.textContent = res.error;
+      return;
+    }
+
+    savedPresets = res.presets || [];
+    renderPresetQuestions();
+  });
 }
 
 for (let i = 0; i < 4; i++) addOptionInput();
 
-renderPresetQuestions();
-
 addOptionBtn.addEventListener("click", () => addOptionInput());
+
+if (savePresetForm) {
+  savePresetForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    adminError.textContent = "";
+
+    const options = [...optionInputs.querySelectorAll("input")].map((input) => input.value);
+
+    socket.emit(
+      "saveQuestionPreset",
+      {
+        title: presetTitle.value,
+        question: question.value,
+        options,
+        correctKey: correctKey.value,
+        durationSeconds: Number(duration.value || 15),
+      },
+      (res) => {
+        if (!res.ok) {
+          adminError.textContent = res.error;
+          return;
+        }
+
+        savedPresets = res.presets || [];
+        presetTitle.value = "";
+        renderPresetQuestions();
+      }
+    );
+  });
+}
 
 loginForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -148,6 +168,7 @@ loginForm.addEventListener("submit", (event) => {
 
     loginCard.classList.add("hidden");
     adminCard.classList.remove("hidden");
+    loadSavedPresets();
   });
 });
 
@@ -212,7 +233,10 @@ function renderAdminState(state) {
   answeredLabel.textContent = `${answered} / ${state.players.length}`;
 
   playersList.innerHTML = "";
-  for (const player of state.players.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))) {
+
+  for (const player of state.players.sort(
+    (a, b) => b.score - a.score || a.name.localeCompare(b.name)
+  )) {
     const row = document.createElement("div");
     row.className = "playerRow";
     row.innerHTML = `
@@ -225,11 +249,16 @@ function renderAdminState(state) {
   }
 
   countsList.innerHTML = "";
+
   const counts = {};
-  for (const option of state.options || []) counts[option.key] = 0;
+  for (const option of state.options || []) {
+    counts[option.key] = 0;
+  }
 
   for (const player of state.players) {
-    if (player.answerKey) counts[player.answerKey] = (counts[player.answerKey] || 0) + 1;
+    if (player.answerKey) {
+      counts[player.answerKey] = (counts[player.answerKey] || 0) + 1;
+    }
   }
 
   for (const [key, count] of Object.entries(counts)) {
