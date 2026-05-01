@@ -28,6 +28,7 @@ const countsList = document.getElementById("countsList");
 const presetQuestionsList = document.getElementById("presetQuestionsList");
 const savePresetForm = document.getElementById("savePresetForm");
 const presetTitle = document.getElementById("presetTitle");
+const finalResultsBtn = document.getElementById("finalResultsBtn");
 
 const keys = ["A", "B", "C", "D", "E", "F"];
 
@@ -193,6 +194,13 @@ questionForm.addEventListener("submit", (event) => {
     }
   );
 });
+
+finalResultsBtn.addEventListener("click", () => {
+  socket.emit("showFinalResults", (res) => {
+    if (!res.ok) adminError.textContent = res.error;
+  });
+});
+
 
 leaderboardBtn.addEventListener("click", () => {
   socket.emit("showLeaderboard", (res) => {
