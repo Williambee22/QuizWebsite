@@ -295,6 +295,7 @@ function beginQuestionNow() {
   state.options = pending.options;
   state.correctKey = pending.correctKey;
   state.durationSeconds = pending.durationSeconds;
+  state.countdownSeconds = pending.countdownSeconds ?? 3;
   state.questionStartedAt = Date.now();
   state.endsAt = state.questionStartedAt + pending.durationSeconds * 1000;
   state.countdownEndsAt = null;
@@ -310,8 +311,18 @@ function beginQuestionNow() {
 function startCountdown() {
   clearTimer();
 
+  const countdownSeconds = Math.max(
+    0,
+    Math.min(30, Number(state.pendingQuestion?.countdownSeconds ?? 3))
+  );
+
+  if (countdownSeconds <= 0) {
+    beginQuestionNow();
+    return;
+  }
+
   state.phase = "countdown";
-  state.countdownSeconds = 3;
+  state.countdownSeconds = countdownSeconds;
   state.countdownEndsAt = Date.now() + state.countdownSeconds * 1000;
 
   timerInterval = setInterval(() => {
@@ -542,6 +553,11 @@ io.on("connection", (socket) => {
       Math.min(120, Number(payload?.durationSeconds || 15))
     );
 
+    const countdownSeconds = Math.max(
+      0,
+      Math.min(30, Number(payload?.countdownSeconds ?? 3))
+    );
+    
     if (!question) {
       callback?.({ ok: false, error: "Question is required." });
       return;
@@ -562,6 +578,7 @@ io.on("connection", (socket) => {
       options,
       correctKey,
       durationSeconds,
+      countdownSeconds,
     };
 
     state.question = "";
@@ -587,7 +604,12 @@ io.on("connection", (socket) => {
     }
 
     callback?.({ ok: true });
-    startCountdown();
+
+    if (countdownSeconds > 0) {
+      startCountdown();
+    } else {
+      beginQuestionNow();
+    }
   });
 
   socket.on("showFinalResults", (callback) => {
@@ -628,7 +650,12 @@ io.on("connection", (socket) => {
       5,
       Math.min(120, Number(payload?.durationSeconds || 15))
     );
-  
+
+    const countdownSeconds = Math.max(
+      0,
+      Math.min(30, Number(payload?.countdownSeconds ?? 3))
+    );
+    
     if (!title) {
       callback?.({ ok: false, error: "Preset title is required." });
       return;
@@ -656,6 +683,7 @@ io.on("connection", (socket) => {
       options: options.map((o) => o.text),
       correctKey,
       durationSeconds,
+      countdownSeconds,
       createdAt: Date.now(),
     };
   
