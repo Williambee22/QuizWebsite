@@ -27,7 +27,7 @@ const leaderboardList = document.getElementById("leaderboardList");
 
 const countdownNumber = document.getElementById("countdownNumber");
 const countdownQuestionText = document.getElementById("countdownQuestionText");
-const countdownOptionsGrid = document.getElementById("countdownOptionsGrid");
+
 
 const musicVolume = document.getElementById("musicVolume");
 
@@ -136,21 +136,9 @@ function renderOptions(state) {
   }
 }
 
-function renderCountdownOptions(state) {
+function renderCountdownQuestion(state) {
   if (countdownQuestionText) {
     countdownQuestionText.textContent = state.question || "";
-  }
-
-  if (!countdownOptionsGrid) return;
-
-  countdownOptionsGrid.innerHTML = "";
-
-  for (const option of state.options || []) {
-    const button = document.createElement("button");
-    button.className = "optionButton countdownOptionButton";
-    button.disabled = true;
-    button.innerHTML = `<strong>${option.key}</strong><span>${escapeHtml(option.text)}</span>`;
-    countdownOptionsGrid.appendChild(button);
   }
 }
 
@@ -247,7 +235,7 @@ socket.on("state", (state) => {
     myAnswer = null;
     showOnly(countdownView);
 
-    renderCountdownOptions(state);
+    renderCountdownQuestion(state);
 
     const secondsLeft = Math.max(0, state.countdownLeftMs / 1000);
     const displayNumber = Math.max(1, Math.ceil(secondsLeft));
