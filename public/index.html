@@ -35,15 +35,19 @@
       <div id="lobbyView">
         <h1>Waiting for the admin...</h1>
         <p class="muted">The next question will appear automatically.</p>
-      </div>
-
-      <div id="questionView" class="hidden">
-        <div class="timerWrap">
-          <div class="timerText"><span id="timerLabel">15.0</span>s</div>
-          <div class="timerBar">
-            <div id="timerFill"></div>
+      
+        <div class="musicBox">
+          <div>
+            <strong>Lobby Music</strong>
+            <p class="muted">Music plays while waiting in the lobby.</p>
           </div>
+      
+          <label class="volumeControl">
+            Volume
+            <input id="musicVolume" type="range" min="0" max="100" value="35" />
+          </label>
         </div>
+      </div>
 
         <h1 id="questionText"></h1>
         <div id="optionsGrid" class="options"></div>
