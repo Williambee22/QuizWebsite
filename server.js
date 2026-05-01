@@ -77,10 +77,21 @@ function clearTimer() {
   timerInterval = null;
 }
 
-function lockQuestion() {
+function revealQuestion() {
   clearTimer();
-  state.phase = "locked";
+
+  if (state.phase === "reveal") return;
+
+  for (const player of Object.values(state.players)) {
+    if (player.answerKey === state.correctKey) {
+      player.score = (player.score || 0) + 1;
+    }
+  }
+
+  state.phase = "reveal";
   state.endsAt = null;
+  state.lastResults = buildResults();
+
   emitState();
 }
 
@@ -93,7 +104,7 @@ function startTimer() {
     }
 
     if (Date.now() >= state.endsAt) {
-      lockQuestion();
+      revealQuestion();
       return;
     }
 
@@ -252,9 +263,18 @@ io.on("connection", (socket) => {
 
     player.answerKey = cleanKey;
     player.answeredAt = Date.now();
-
+    
     callback?.({ ok: true });
-    emitState();
+    
+    const players = Object.values(state.players);
+    const everyoneAnswered =
+      players.length > 0 && players.every((p) => Boolean(p.answerKey));
+    
+    if (everyoneAnswered) {
+      revealQuestion();
+    } else {
+      emitState();
+    }
   });
 
   socket.on("revealAnswer", (callback) => {
@@ -262,21 +282,10 @@ io.on("connection", (socket) => {
       callback?.({ ok: false, error: "Admin only." });
       return;
     }
-
-    clearTimer();
-
-    for (const player of Object.values(state.players)) {
-      if (player.answerKey === state.correctKey) {
-        player.score = (player.score || 0) + 1;
-      }
-    }
-
-    state.phase = "reveal";
-    state.endsAt = null;
-    state.lastResults = buildResults();
-
+  
+    revealQuestion();
+  
     callback?.({ ok: true });
-    emitState();
   });
 
   socket.on("resetLobby", (callback) => {
