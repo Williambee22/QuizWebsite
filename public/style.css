@@ -349,7 +349,54 @@ button:disabled {
   }
 }
 
+.presetBox {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 18px;
+  margin-bottom: 24px;
+  background: rgba(255,255,255,0.06);
+}
 
+.presetQuestionsList {
+  display: grid;
+  gap: 10px;
+}
+
+.presetQuestionButton {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--line);
+}
+
+.presetQuestionButton span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.countdownNumber {
+  font-size: clamp(7rem, 24vw, 16rem);
+  text-align: center;
+  line-height: 0.9;
+  margin: 24px 0;
+  color: var(--accent2);
+}
+
+.countdownPulse {
+  animation: countdownPulse 0.35s ease both;
+}
+
+@keyframes countdownPulse {
+  from {
+    transform: scale(0.6);
+    opacity: 0.3;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
 
 
 
