@@ -21,6 +21,8 @@ const optionsGrid = document.getElementById("optionsGrid");
 const answerStatus = document.getElementById("answerStatus");
 const correctText = document.getElementById("correctText");
 const resultsList = document.getElementById("resultsList");
+const leaderboardView = document.getElementById("leaderboardView");
+const leaderboardList = document.getElementById("leaderboardList");
 
 let joinedName = localStorage.getItem("quizPlayerName") || "";
 let myAnswer = null;
